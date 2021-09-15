@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from model import RestNet
-from dataset_test import data
+from dataset import data
 from tqdm import tqdm
 import random
 import copy
@@ -37,14 +37,14 @@ def train_model(model, epochs, batch_size, data_path):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     params = filter(lambda p: p.requires_grad, model.parameters())
     criterion = nn.BCELoss()
-    optimizer = torch.optim.SGD(params, lr=0.01, momentum=0.9, weight_decay=0.001, nesterov=True)
+    optimizer = torch.optim.Adam(params)
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
 
     for epoch in range(epochs):
         for phase in ['train', 'val']:
-            flag = (phase == 'train')
+            flag = phase == 'train'
             if flag:
                 model.train()
             else:
@@ -69,20 +69,20 @@ def train_model(model, epochs, batch_size, data_path):
 
             if flag:
                 print('epoch:{} training_loss:{} training_acc:{}'.format(epoch + 1, str(total_loss / len(train_set)), str(acc / len(train_set))))
-                with open('../log/train_loss.txt', 'a+') as file:
+                with open('../log_b256/train_loss.txt', 'a+') as file:
                     file.write('epoch_' + str(epoch + 1) + ' ' + str(total_loss / len(train_set)) + '\n')
-                with open('../log/train_acc.txt', 'a+') as file:
+                with open('../log_b256/train_acc.txt', 'a+') as file:
                     file.write('epoch_' + str(epoch + 1) + ' ' + str(acc / len(train_set)) + '\n')
             else:
                 epoch_val_acc = acc / len(val_set)
                 if epoch_val_acc > best_acc:
                     best_acc = epoch_val_acc
                     best_model_wts = copy.deepcopy(model.state_dict())
-                    torch.save(best_model_wts, '../weights/epoch%d_acc%.3f.pth' % (epoch + 1, epoch_val_acc))
+                    torch.save(best_model_wts, '../weights_256/epoch%d_acc%.3f.pth' % (epoch + 1, epoch_val_acc))
                 print('epoch:{} val_loss:{} val_acc:{}'.format(epoch + 1, str(total_loss / len(val_set)), str(epoch_val_acc)))
-                with open('../log/val_loss.txt', 'a+') as file:
+                with open('../log_b256/val_loss.txt', 'a+') as file:
                     file.write('epoch_' + str(epoch + 1) + ' ' + str(total_loss / len(val_set)) + '\n')
-                with open('../log/val_acc.txt', 'a+') as file:
+                with open('../log_b256/val_acc.txt', 'a+') as file:
                     file.write('epoch_' + str(epoch + 1) + ' ' + str(epoch_val_acc) + '\n')
 
 
@@ -91,9 +91,4 @@ if __name__ == '__main__':
     # resnet.fc = nn.Linear(2048, 1)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     resnet = RestNet(pretrain=True).to(device)
-
-    # for param in
-    print(resnet)
-    for param in resnet.resnet.layer1[0].parameters():
-        param.requires_grad = True
-    train_model(resnet, epochs=100, batch_size=64, data_path='../train')
+    train_model(resnet, epochs=100, batch_size=256, data_path='../train')
